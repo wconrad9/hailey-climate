@@ -147,6 +147,16 @@ def format_month_range(start_month, end_month):
     
     return month_range
 
+def add_winter_year(date):
+
+    month = date.month
+    if month >= 11:
+        winter_year = date.year + 1
+    else:
+        winter_year = date.year
+    
+    return winter_year
+
 user_min_date, user_max_date = st.sidebar.select_slider("Select Date Range", options = UNIQUE_DATE_RANGE, format_func=format_date, value = (MIN_DATE, MAX_DATE))
 start_month, end_month = st.sidebar.select_slider("Select Month Range", options = MONTHS, format_func = format_months, value = (10, 4))
 
@@ -161,17 +171,16 @@ def augment_data_dates(data):
                     year = data['DATE'].dt.year).assign(
                         month = data['DATE'].dt.month
                     )
-    month_day = data['DATE'].apply(format_month_day)
-    month_week = data['DATE'].apply(format_month_week)
-    data = pd.merge(left = data, right = month_day, how='left', left_index = True, right_index=True)
-    data = pd.merge(left = data, right = month_week, how='left', left_index = True, right_index=True)
+    data = data.assign(month_day = data['DATE'].apply(format_month_day))
+    data = data.assign(month_week = data['DATE'].apply(format_month_week))
+    data = data.assign(winter_year = data['DATE'].apply(add_winter_year))
     return data
 date_augmented_data = augment_data_dates(data)
 
 @st.cache()
 def time_filter_data(data):
-    time_filtered_data = data[(data['DATE_x'].dt.date < user_max_date) & (data['DATE_x'].dt.date > user_min_date)]
-    time_filtered_data = time_filtered_data[time_filtered_data['DATE_x'].dt.month.isin(MONTH_RANGE)]
+    time_filtered_data = data[(data['DATE'].dt.date < user_max_date) & (data['DATE'].dt.date > user_min_date)]
+    time_filtered_data = time_filtered_data[time_filtered_data['DATE'].dt.month.isin(MONTH_RANGE)]
     return time_filtered_data
 
 time_filtered_data=time_filter_data(date_augmented_data)
@@ -191,13 +200,16 @@ reported the snowfall metric. In addition, don't be fooled by the contiguous x-a
 snowfall data is absent, like from 1989-2005, during which no snowfall data is available. Finally, it's important to realize that snowfall could vary due to the different
 locations of the stations throughout this region."""
 st.write(SNOWFALL_TOTALS)
+st.write("""_For the purposes of the visualizations below, I've defined the 'Winter Year' to start in November and to be categorized as the year started on January 1st of that Winter Year
+(because, arguably, the majority of the Winter season takes place between the months of January - March). For example, snowfall in November and December 2021 contribute
+to snowfall totals for Winter 2022._""")
 
-snowfall_totals = time_filtered_data.groupby(by=['year', 'STATION'])['SNOW'].sum().reset_index()
+snowfall_totals = time_filtered_data.groupby(by=['winter_year', 'STATION'])['SNOW'].sum().reset_index()
 snowfall_totals = snowfall_totals[snowfall_totals['SNOW'] > 0]
 
 bars = alt.Chart(snowfall_totals).mark_bar().encode(
     alt.Y('SNOW:Q', title = "Snowfall (Inches)"),
-    alt.X('year:O', title="Year"),
+    alt.X('winter_year:O', title="Winter Year"),
     alt.Color('STATION:N', title = "Station")
 )
 rolling_avg = alt.Chart(snowfall_totals).mark_line(color='red').transform_window(
@@ -205,7 +217,7 @@ rolling_avg = alt.Chart(snowfall_totals).mark_line(color='red').transform_window
     frame = [-4,0],
     rolling_mean = 'mean(SNOW)'
 ).encode(
-    x='year:O',
+    x='winter_year:O',
     y='rolling_mean:Q'
 )
 snowfall_totals = (bars + rolling_avg).properties(
@@ -215,35 +227,41 @@ snowfall_totals = (bars + rolling_avg).properties(
 )
 
 snowfall_totals
-SNOWFALL_TOTALS_CONCLUSIONS = """This visualization does however contribute to an answer to my original question. 2022 has had significantly less snow than
-2019-2021, and these 4 values were all recorded at the same station. Across all stations, 2022 is one least snowiest seasons on record, in addition to 2013."""
-st.write(SNOWFALL_TOTALS_CONCLUSIONS)
+SNOWFALL_TOTALS_CONCLUSIONS = """This visualization however contribute to an answer to my original question. 2022 has had less snow than
+2020 and 2021, and these values were all recorded at the same station. 2022 also has less snow than the rolling 5-year average since 1923. However,
+2022 snowfall totals are not an outlier - 2013 and 1988 report comparable levels of snowfall, and 2019 and 1977 in particular appear to have had much
+less snowfall than 2022. It's doubtful that 2016 didn't have any snow.. so we might chalk that up to a lack of stations consistently recording data."""
 
+st.write(SNOWFALL_TOTALS_CONCLUSIONS)
 ###############################
 ##### Snow Depth Stations #####
 ###############################
 st.write("""Since the 2004, a number of stations have been recording snow depth. We can visualize total snow depth at these stations using a stacked bar chart.
-Surprisingly, total snow depth in 2022 is higher for most stations compared to other years.""")
+The unit on the y-axis is days by inches, meaning the day multiplied by the snow depth on that day. We limit this comparison to years after 2004 because roughly
+the same group of stations began recording snow depth after this year. We can see that 2022 does have lower overall snow depth across stations for this Winter season,
+but the data set only extends to the end of February 2022, so this Winter season doesn't include the additional snow depth values for March, April, etc. It appears
+that by the end of the season, 2022 will boast comparable snow depth to past seasons.""")
 
 snow_depth_total = date_augmented_data[date_augmented_data["year"] >= 2004]
 
-comparison3_snowfall = snow_depth_total.groupby(by=['year', 'STATION'])['SNWD'].mean().reset_index()
-snow_line3 = alt.Chart(comparison3_snowfall).mark_bar().encode(
-    alt.X('year:N'),
-    alt.Y('SNWD:Q'),
+comparison_snow_depth = snow_depth_total.groupby(by=['winter_year', 'STATION'])['SNWD'].sum().reset_index()
+snow_depth_bars = alt.Chart(comparison_snow_depth).mark_bar().encode(
+    alt.X('winter_year:N', title = "Winter Year"),
+    alt.Y('SNWD:Q', title = "Snow Depth (inches x days)"),
     alt.Color('STATION:N'),
-).properties(
+)
+snow_depth_bars.properties(
     width=1000,
     height=500,
     title="Snow Depth since 2004"
 )
-snow_line3
+snow_depth_bars
 
 #################################
 ##### Snow Depth Comparison #####
 #################################
-SNOW_DEPTH = """Snow depth is another good representation of the amount of snowfall in a given Winter. We can use a line chart to compare
-average snow depth across all stations for this Winter vs a prior Winter. Use the slider to select a comparison year."""
+SNOW_DEPTH = """We can use a line chart to compare average snow depth across all stations for this Winter vs. a prior Winter. Use the slider to select a comparison year."""
+st.write(SNOW_DEPTH)
 comparison_year = st.slider("Select Comparison Year", min_value=2004, max_value=2021)
 
 @st.cache()
@@ -256,19 +274,19 @@ def prepare_snow_depth_data(comparison_year, data):
     comparison_winter['winter_type'] = "Past"
 
     winter_comparison = pd.concat([current_winter, comparison_winter])
-    month_day = winter_comparison['DATE_x'].apply(format_month_day)
+    month_day = winter_comparison['DATE'].apply(format_month_day)
     winter_comparison = pd.merge(left=winter_comparison, right = month_day, how='left', on=winter_comparison.index)
-    winter_comparison = winter_comparison.groupby(by=['DATE_y', 'winter_type'])['SNWD'].mean().reset_index()
+    winter_comparison = winter_comparison.groupby(by=['month_day', 'winter_type'])['SNWD'].mean().reset_index()
     return winter_comparison
 
 winter_comparison = prepare_snow_depth_data(comparison_year, date_augmented_data)
 
 sort_order = ["D", "J", "F"]
-dates_sorted = sorted(winter_comparison['DATE_y'],key = lambda date: (sort_order.index(date[0]), int(date[3:])))
+dates_sorted = sorted(winter_comparison['month_day'],key = lambda date: (sort_order.index(date[0]), int(date[3:])))
 
 snow_depth_comparison = alt.Chart(winter_comparison).mark_line().encode(
     alt.Y('SNWD:Q', title = "Snow Depth (Inches)"),
-    alt.X('DATE_y:O', title="Day", sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+    alt.X('month_day:O', title="Day", sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
     alt.Color('winter_type:N', title="Winter")
 ).properties(
     width = 1000,
@@ -289,6 +307,10 @@ st.write(SNOW_DEPTH_CONCLUSIONS)
 ##################################
 ###### Temp & Precipitation ######
 ##################################
+TEMP_SNOW_PRECIP_SETUP = """Another interesting way to visualize our Winter season is through a heatmap. The selector on the left can be used to alter the time resolution.
+Use the other selector to compare either min or max temperatures at the time resolution specified."""
+st.write(TEMP_SNOW_PRECIP_SETUP)
+
 def format_group_method(option):
     return option.capitalize()
 
@@ -307,7 +329,7 @@ else:
     TEMP_FILTER = 'TMAX'
 
 month_order = ["Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep"]
-dates_sorted = sorted(time_filtered_data['DATE_y'].unique(), key = lambda date: (month_order.index(date[:3]), int(date[3:])))
+dates_sorted = sorted(time_filtered_data['month_day'].unique(), key = lambda date: (month_order.index(date[:3]), int(date[3:])))
 
 if time_resolution == "month":
     temp = alt.Chart(time_filtered_data).mark_rect().encode(
@@ -344,17 +366,17 @@ elif time_resolution == "week":
 else:
     temp = alt.Chart(time_filtered_data).mark_rect().encode(
         alt.Y('decade:N', title="Decade", sort='descending'),
-        alt.X('DATE_y:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+        alt.X('month_day:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
         alt.Color(f'mean({TEMP_FILTER}):Q', scale={'scheme':'reds'}, title=f"{temp_select}")
     )
     precip = alt.Chart(time_filtered_data).mark_rect().encode(
         alt.Y('decade:N', title="Decade", sort='descending'),
-        alt.X('DATE_y:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+        alt.X('month_day:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
         alt.Color('mean(PRCP):Q', scale={'scheme':'greens'}, title="Precip")
     )
     snow = alt.Chart(time_filtered_data).mark_rect().encode(
         alt.Y('decade:N', title="Decade", sort='descending'),
-        alt.X('DATE_y:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+        alt.X('month_day:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
         alt.Color('mean(SNOW):Q', scale={'scheme':'blues'}, title="Snowfall"),
     )
 temp = temp.properties(
@@ -363,24 +385,36 @@ temp = temp.properties(
     title=f"{temp_select} Across Decades"
 )
 temp
+TEMP_CONCLUSIONS = """I love the way this chart allows us to visualize a Winter season as a period of time where min and max temperatures are generally
+lower. The 'duration' of the Winter can be seen by looking at the length of this band of lower temperatures, indicated by lighter red hues."""
+st.write(TEMP_CONCLUSIONS)
 snow = snow.properties(
     width=1000,
     height=400,
     title="Snowfall Across Decades"
 )
 snow
+SNOW_CONCLUSIONS = """Snowfall dates are another great way to visualize the Winter. Above we see that across decades most of the snowfall occurs after the start
+of November and ends in early April. We should also note that we have some missing data for our current decade, 2020-2022!"""
+st.write(SNOW_CONCLUSIONS)
 precip = precip.properties(
     width=1000,
     height=400,
     title="Precipitation Across Decades"
 )
 precip
+PRECIP_CONCLUSIONS = """Snow is considered a type of precipitation, so it is interesting to observe average precipitation levels across decades as well."""
+st.write(PRECIP_CONCLUSIONS)
 
 #######################################
 ####### Min Max Temp Comparison #######
 #######################################
+MIN_MAX_TEMP_COMPARISON = """We introduce another slider selection here to select a temperature comparison for the current decade compared to other time periods.
+The entire time period 1923-2019 is the default selection, essentially representing an average temperature across nearly a hundred years. We can see how the current
+decade temp has fluctuated in comparison to this average, but generally follows the average trend. It's interesting to compare 2020-2022 to other three-year periods."""
+st.write(MIN_MAX_TEMP_COMPARISON)
 
-current_decade = time_filtered_data[time_filtered_data['DATE_x'].dt.year >= 2020]
+current_decade = time_filtered_data[time_filtered_data['DATE'].dt.year >= 2020]
 current_decade["time_period"] = "Current Decade (2020-2022)"
 
 range_start, range_end = st.select_slider("Choose a Time Period to Compare", options=np.arange(1923,2020), value = (1923,2019))
@@ -389,15 +423,15 @@ other_time_frame = time_filtered_data[time_filtered_data['year'].isin(time_frame
 other_time_frame["time_period"] = f"Comparison ({range_start}-{range_end})"
 
 comparison = pd.concat([current_decade, other_time_frame])
-tmin = comparison.groupby(by=["DATE_y", "time_period"])['TMIN'].mean().reset_index()
-tmax = comparison.groupby(by=["DATE_y", "time_period"])['TMAX'].mean().reset_index()
+tmin = comparison.groupby(by=["month_day", "time_period"])['TMIN'].mean().reset_index()
+tmax = comparison.groupby(by=["month_day", "time_period"])['TMAX'].mean().reset_index()
 tmin_line = alt.Chart(tmin).mark_line().encode(
-    alt.X('DATE_y:O', sort = dates_sorted, axis=alt.Axis(labelOverlap=True), title = "Date"),
+    alt.X('month_day:O', sort = dates_sorted, axis=alt.Axis(labelOverlap=True), title = "Date"),
     alt.Y('TMIN:Q', title="Min Temp"),
     alt.Color('time_period:N',sort = ['Current Decade (2020-2022)'])
 )
 tmax_line = alt.Chart(tmax).mark_line().encode(
-    alt.X('DATE_y:O', sort = dates_sorted, axis=alt.Axis(labelOverlap=True), title = "Date"),
+    alt.X('month_day:O', sort = dates_sorted, axis=alt.Axis(labelOverlap=True), title = "Date"),
     alt.Y('TMAX:Q', title = "Max Temp"),
     alt.Color('time_period:N', title="Time Period", sort = ['Current Decade (2020-2022)'])
 )
@@ -408,16 +442,21 @@ temp_comparison = (tmin_line + tmax_line).properties(
 )
 temp_comparison
 
-#######################################
-##### Min Max Snowfall Comparison #####
-#######################################
+###############################
+##### Snowfall Comparison #####
+###############################
+SNOWFALL_COMPARISON = """It seems that for the current decade, most of the snowfall has happened in December and January. Keep in mind,
+although snowfall dates look sparse, for other three-year periods these values might be normal. Visualizing snowfall against the average is useful,
+but it's also telling to compare to other 3-year periods."""
+st.write(SNOWFALL_COMPARISON)
+
 selection = alt.selection_multi(fields=['time_period'])
 color = alt.condition(selection,
                       alt.Color('time_period:N', legend=None),
                       alt.value('lightgray'))
 
 snow_points = alt.Chart(comparison).mark_point().encode(
-    alt.X('DATE_y:N', axis = alt.Axis(labelOverlap=True), sort = dates_sorted, title="Date"),
+    alt.X('month_day:N', axis = alt.Axis(labelOverlap=True), sort = dates_sorted, title="Date"),
     alt.Y('mean(SNOW):Q', title="Snowfall"),
     alt.Size('mean(SNOW):Q', title="Snowfall (inches)"),
     color=color,
@@ -436,9 +475,13 @@ legend = alt.Chart(comparison).mark_rect().encode(
 
 snow_points | legend
 
-#######################################
-##### Min Max Snowfall Comparison #####
-#######################################
+###############################
+##### Snowfall Comparison #####
+###############################
+SNOWFALL_COMPARISON = """In this final visualization, you can select a decade in the legend on the right to highlight
+the correspond points on the chart to the left. In it's default state, this chart does an excellent job of visualizing
+snowfall across winter months and across decades."""
+st.write(SNOWFALL_COMPARISON)
 decade_select = alt.selection_multi(fields=['decade'])
 color = alt.condition(decade_select,
                       alt.Color('decade:N', legend=None, scale={'scheme':'category20'}),
@@ -446,7 +489,7 @@ color = alt.condition(decade_select,
 comparison['decade'] = comparison['decade'].astype(str)
 
 snow_points2 = alt.Chart(comparison).mark_point().encode(
-    alt.X('DATE_y:N', axis = alt.Axis(labelOverlap=True), sort = dates_sorted, title="Date"),
+    alt.X('month_day:N', axis = alt.Axis(labelOverlap=True), sort = dates_sorted, title="Date"),
     alt.Y('mean(SNOW):Q', title="Snowfall"),
     alt.Size('mean(SNOW):Q', title="Snowfall (inches)"),
     color=color
@@ -462,5 +505,7 @@ legend = alt.Chart(comparison).mark_rect().encode(
 ).add_selection(
     decade_select
 )
-
 snow_points2 | legend
+
+CONCLUSION = """"""
+st.write(CONCLUSION)
