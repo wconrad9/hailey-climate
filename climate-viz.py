@@ -223,7 +223,7 @@ st.write(SNOWFALL_TOTALS_CONCLUSIONS)
 ###############################
 ##### Snow Depth Stations #####
 ###############################
-st.write("""Since the 2004, a number of stations have been recording snow depth. We can visualize total snow depth at these stations using a stacked bar chart.
+st.write("""Since the 2006, a number of stations have been recording snow depth. We can visualize total snow depth at these stations using a stacked bar chart.
 The unit on the y-axis is days by inches, meaning the day multiplied by the snow depth on that day. We limit this comparison to years after 2004 because roughly
 the same group of stations began recording snow depth after this year. We can see that 2022 does have lower overall snow depth across stations for this Winter season,
 but the data set only extends to the end of February 2022, so this Winter season doesn't include the additional snow depth values for March, April, etc. It appears
@@ -237,7 +237,7 @@ snow_depth_bars = alt.Chart(comparison_snow_depth).mark_bar().encode(
     alt.Y('SNWD:Q', title = "Snow Depth (inches x days)"),
     alt.Color('STATION:N'),
 )
-snow_depth_bars.properties(
+snow_depth_bars = snow_depth_bars.properties(
     width=1000,
     height=500,
     title="Snow Depth since 2004"
@@ -247,9 +247,10 @@ snow_depth_bars
 #################################
 ##### Snow Depth Comparison #####
 #################################
-SNOW_DEPTH = """We can use a line chart to compare average snow depth across all stations for this Winter vs. a prior Winter. Use the slider to select a comparison year."""
+SNOW_DEPTH = """Use the slider to select a comparison year. We can compare the dates and average amounts of snowfall and also average
+snow depth across all stations for this Winter vs. a prior Winter."""
 st.write(SNOW_DEPTH)
-comparison_year = st.slider("Select Comparison Year", min_value=2004, max_value=2021)
+comparison_year = st.slider("Select Comparison Year", min_value=2006, max_value=2021)
 
 @st.cache()
 def prepare_snow_depth_data(comparison_year, data):
@@ -263,15 +264,16 @@ def prepare_snow_depth_data(comparison_year, data):
     winter_comparison = pd.concat([current_winter, comparison_winter])
     month_day = winter_comparison['DATE'].apply(format_month_day)
     winter_comparison = pd.merge(left=winter_comparison, right = month_day, how='left', on=winter_comparison.index)
-    winter_comparison = winter_comparison.groupby(by=['month_day', 'winter_type'])['SNWD'].mean().reset_index()
-    return winter_comparison
+    snow_depth_comparison = winter_comparison.groupby(by=['month_day', 'winter_type'])['SNWD'].mean().reset_index()
+    snowfall_comparison = winter_comparison.groupby(by=['month_day', 'winter_type'])['SNOW'].mean().reset_index()
+    return snow_depth_comparison, snowfall_comparison
 
-winter_comparison = prepare_snow_depth_data(comparison_year, date_augmented_data)
+snow_depth_comparison, snowfall_comparison = prepare_snow_depth_data(comparison_year, date_augmented_data)
 
 sort_order = ["D", "J", "F"]
-dates_sorted = sorted(winter_comparison['month_day'],key = lambda date: (sort_order.index(date[0]), int(date[3:])))
+dates_sorted = sorted(snow_depth_comparison['month_day'],key = lambda date: (sort_order.index(date[0]), int(date[3:])))
 
-snow_depth_comparison = alt.Chart(winter_comparison).mark_line().encode(
+snow_depth_comparison = alt.Chart(snow_depth_comparison).mark_line().encode(
     alt.Y('SNWD:Q', title = "Snow Depth (Inches)"),
     alt.X('month_day:O', title="Day", sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
     alt.Color('winter_type:N', title="Winter")
@@ -280,9 +282,20 @@ snow_depth_comparison = alt.Chart(winter_comparison).mark_line().encode(
     height = 500,
     title = f"Snow Depth Comparison, Current Winter to Winter {comparison_year}"
 )
+snowfall_comparison = alt.Chart(snowfall_comparison).mark_bar().encode(
+    alt.Y('SNOW:Q', title = "Snow Depth (Inches)"),
+    alt.X('month_day:O', title="Day", sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+    alt.Color('winter_type:N', title="Winter"),
+    tooltip = ['SNOW']
+).properties(
+    width = 1000,
+    height = 500,
+    title = f"Snowfall Comparison, Current Winter to Winter {comparison_year}"
+)
+snowfall_comparison
 snow_depth_comparison
 
-SNOW_DEPTH_CONCLUSIONS = """This chart corroborates what I've heard from locals. The early season was good for snow, but snow depth in Hailey has only been
+SNOW_DEPTH_CONCLUSIONS = """These charts corroborate what I've heard from locals. The early season was exceptional for snow, but snow depth in Hailey has only been
 declining since about December 26th! In other Winters, the snow depth continues to accumulate throughout the season. That said, snow depth at the end of
 February this Winter is comparable to other Winters, in some cases exceeding values from the past. This means that the early season really must have been
 exceptional - even without additional storms after mid-January, the snow depth is similar to that of most other Winters. This chart also tells me that many
@@ -494,5 +507,14 @@ legend = alt.Chart(comparison).mark_rect().encode(
 )
 snow_points2 | legend
 
-CONCLUSION = """"""
+CONCLUSION = """With all of the exploration that we've done, how can we characterize Winter 2022? In terms of total snowfall, it has been below average so far,
+and the likelihood of snowfall in March and April steadily decreases. In terms of snow depth, it has been just about average, thanks to the exceptional amount of
+snowfall in the early season from December through about the first week of January. In our current decade, there appear to have been more warmer days than other decades,
+and so far most of the snowfall has happened in December and January, while snowfall in February and March is more sparse. January and February historically have been two
+of the snowiest months, so have a nearly snowless end of January and entirety of February is abnormal.
+
+A Winter is a difficult thing to describe aptly! There is so much data to look at, and innumerable ways to organize it. I hope you've enjoyed exploring these
+visualizations. One of the great things about this app is that it is essentially a template for weather data in any zip code - if it's exported with the same data values
+as I used, then you could create the same visulizations for your own area and experiment with your own methods of visualizing weather data. Please reach out if you're
+interested in learning more."""
 st.write(CONCLUSION)
