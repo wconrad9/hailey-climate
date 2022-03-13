@@ -295,7 +295,7 @@ snowfall_comparison = alt.Chart(snowfall_comparison).mark_bar().encode(
 snowfall_comparison
 snow_depth_comparison
 
-SNOW_DEPTH_CONCLUSIONS = """These charts corroborate what I've heard from locals. The early season was exceptional for snow, but snow depth in Hailey has only been
+SNOW_DEPTH_CONCLUSIONS = """These charts corroborate what I've heard from locals. The early season had a lot of snowfall, but snow depth in Hailey has only been
 declining since about December 26th! In other Winters, the snow depth continues to accumulate throughout the season. That said, snow depth at the end of
 February this Winter is comparable to other Winters, in some cases exceeding values from the past. This means that the early season really must have been
 exceptional - even without additional storms after mid-January, the snow depth is similar to that of most other Winters. This chart also tells me that many
@@ -511,10 +511,10 @@ CONCLUSION = """With all of the exploration that we've done, how can we characte
 and the likelihood of snowfall in March and April steadily decreases. In terms of snow depth, it has been just about average, thanks to the exceptional amount of
 snowfall in the early season from December through about the first week of January. In our current decade, there appear to have been more warmer days than other decades,
 and so far most of the snowfall has happened in December and January, while snowfall in February and March is more sparse. January and February historically have been two
-of the snowiest months, so have a nearly snowless end of January and entirety of February is abnormal.
+of the snowiest months, so to have a nearly snowless end of January and entirety of February is abnormal.
 
 A Winter is a difficult thing to describe aptly! There is so much data to look at, and innumerable ways to organize it. I hope you've enjoyed exploring these
 visualizations. One of the great things about this app is that it is essentially a template for weather data in any zip code - if it's exported with the same data values
 as I used, then you could create the same visulizations for your own area and experiment with your own methods of visualizing weather data. Please reach out if you're
-interested in learning more."""
+interested in learning more!"""
 st.write(CONCLUSION)
