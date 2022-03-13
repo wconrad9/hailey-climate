@@ -350,17 +350,17 @@ if time_resolution == "month":
 elif time_resolution == "week":
     temp = alt.Chart(time_filtered_data).mark_rect().encode(
         alt.Y('decade:N', title="Decade", sort='descending'),
-        alt.X('DATE:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+        alt.X('month_week:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
         alt.Color(f'mean({TEMP_FILTER}):Q', scale={'scheme':'reds'}, title=f"{temp_select}"),
     )
     precip = alt.Chart(time_filtered_data).mark_rect().encode(
         alt.Y('decade:N', title="Decade", sort='descending'),
-        alt.X('DATE:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+        alt.X('month_week:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
         alt.Color('mean(PRCP):Q', scale={'scheme':'greens'}, title="Precip"),
     )
     snow = alt.Chart(time_filtered_data).mark_rect().encode(
         alt.Y('decade:N', title="Decade", sort='descending'),
-        alt.X('DATE:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
+        alt.X('month_week:O', title=f"{time_resolution}".capitalize(), sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
         alt.Color('mean(SNOW):Q', scale={'scheme':'blues'}, title="Snowfall"),
     )
 else:
