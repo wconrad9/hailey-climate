@@ -496,7 +496,7 @@ snow_points2 = alt.Chart(comparison).mark_point().encode(
 ).properties(
     width=1000,
     height=500,
-    title="Comparing 2020 Snowfall to Other Decades"
+    title="Comparing 2020s Snowfall to Other Decades"
 )
 
 legend = alt.Chart(comparison).mark_rect().encode(
