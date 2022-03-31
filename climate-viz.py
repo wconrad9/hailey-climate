@@ -283,7 +283,7 @@ snow_depth_comparison = alt.Chart(snow_depth_comparison).mark_line().encode(
     title = f"Snow Depth Comparison, Current Winter to Winter {comparison_year}"
 )
 snowfall_comparison = alt.Chart(snowfall_comparison).mark_bar().encode(
-    alt.Y('SNOW:Q', title = "Snow Depth (Inches)"),
+    alt.Y('SNOW:Q', title = "Snow Fall (Inches)"),
     alt.X('month_day:O', title="Day", sort=dates_sorted, axis=alt.Axis(labelOverlap=True)),
     alt.Color('winter_type:N', title="Winter"),
     tooltip = ['SNOW']
